@@ -127,11 +127,25 @@
     }
 
     function handleCharacteristicChange(event){
-        const newValueReceived = new TextDecoder().decode(event.target.value);
-        console.log("Characteristic value changed: ", newValueReceived);
-        retrievedValue.innerHTML = newValueReceived;
-        timestampContainer.innerHTML = getDateTime();
+    const decodedText = new TextDecoder().decode(event.target.value);
+    console.log("Received string:", decodedText);
+  
+    const parts = decodedText.trim().split(','); // ["23.56", "78.90"]
+    if (parts.length === 2) {
+      const float1 = parseFloat(parts[0]);
+      const float2 = parseFloat(parts[1]);
+  
+      console.log("Float 1:", float1);
+      console.log("Float 2:", float2);
+  
+      // Mostrar en pantalla
+      retrievedValue.innerHTML = `Sensor 1: ${float1} | Sensor 2: ${float2}`;
+    } else {
+      retrievedValue.innerHTML = "Invalid data format";
     }
+  
+    timestampContainer.innerHTML = getDateTime();
+  }
 
     function writeOnCharacteristic(value){
         if (bleServer && bleServer.connected) {
