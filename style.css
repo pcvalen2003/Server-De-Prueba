@@ -3,32 +3,50 @@ html {
     display: inline-block;
     text-align: center;
 }
+
+body {
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
 h1 {
     font-size: 1.8rem;
     color: white;
+    margin: 20px 0;
 }
+
+h2 {
+    font-size: 1.4rem;
+    color: #333;
+    margin: 10px 0;
+}
+
 .topnav {
     overflow: hidden;
     background-color: #0A1128;
+    padding: 10px;
 }
-body {
-    margin: 0;
-}
+
 .content {
-    padding: 50px;
+    padding: 50px 20px;
 }
+
 .card-grid {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
     margin-bottom: 30px;
     display: grid;
     grid-gap: 2rem;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
+
 .card {
     background-color: white;
-    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    box-shadow: 2px 2px 12px 1px rgba(140, 140, 140, 0.5);
+    padding: 20px;
+    border-radius: 8px;
 }
+
 button {
     color: white;
     padding: 14px 20px;
@@ -36,21 +54,27 @@ button {
     border: none;
     cursor: pointer;
     border-radius: 4px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
 }
 
-.onButton{
+button:hover {
+    opacity: 0.85;
+}
+
+.onButton {
     background-color: #1b8a94;
 }
 
-.offButton{
+.offButton {
     background-color: #5f6c6d;
 }
 
-.connectButton{
+.connectButton {
     background-color: #24af37;
 }
 
-.disconnectButton{
+.disconnectButton {
     background-color: #d13a30;
 }
 
@@ -61,4 +85,76 @@ button {
 
 .reading {
     font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-top: 10px;
+}
+
+.input-label {
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 5px;
+    display: block;
+    text-align: left;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="datetime-local"],
+select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0 20px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+form {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.status-message {
+    font-size: 1rem;
+    margin-top: 10px;
+    color: #444;
+}
+
+.success {
+    color: #24af37;
+}
+
+.error {
+    color: #d13a30;
+}
+
+footer {
+    margin-top: 40px;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+th {
+    background-color: #0A1128;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
 }
