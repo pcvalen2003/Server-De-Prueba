@@ -66,10 +66,23 @@ function connectToDevice() {
 function handleCharacteristicChange(event) {
   const decodedText = new TextDecoder().decode(event.target.value).trim();
   const parts = decodedText.split(',');
-  if (parts.length === 2) {
+  if (parts.length === 3) {
     const lat = (parseFloat(parts[0]) - 2560)/29;
     const lng = (parseFloat(parts[1]) - 2560)/29;
     const distancia = calcularDistancia(lat, lng, pos.coords.latitude, pos.coords.longitude);
+
+    // Estado del NRF en la página
+    const estadoNRF = parts[2];
+    if (valorNRF === 'Y') {
+        estadoElem.innerHTML = "NRF OK ✅";
+        estadoElem.style.color = "#24af37"; // verde
+    } else if (valorNRF === 'N') {
+        estadoElem.innerHTML = "Error NRF ❌";
+        estadoElem.style.color = "#d13a30"; // rojo
+    } else {
+        estadoElem.innerHTML = "Estado NRF desconocido";
+        estadoElem.style.color = "#bebebe"; // gris
+    }
     
     retrievedValue.innerHTML = `${distancia} m`;
     timestampContainer.innerHTML = getDateTime();
