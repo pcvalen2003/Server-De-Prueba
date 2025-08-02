@@ -69,14 +69,29 @@ function handleCharacteristicChange(event) {
   if (parts.length === 2) {
     const lat = (parseFloat(parts[0]) - 2560)/29;
     const lng = (parseFloat(parts[1]) - 2560)/29;
-
-    retrievedValue.innerHTML = `Lat: ${lat} | Lng: ${lng}`;
+    const distancia = calcularDistancia(lat, lng, pos.coords.latitude, pos.coords.longitude);
+    
+    retrievedValue.innerHTML = `${distancia} m`;
     timestampContainer.innerHTML = getDateTime();
 
     updateBleMarker(lat, lng);
   } else {
     retrievedValue.innerHTML = "Formato inválido";
   }
+}
+
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // radio de la Tierra en metros
+    const rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad;
+    const dLon = (lon2 - lon1) * rad;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c); // distancia en metros (entero)
 }
 
 function writeOnCharacteristic(value) {
