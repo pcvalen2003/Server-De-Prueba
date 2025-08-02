@@ -71,17 +71,17 @@ function handleCharacteristicChange(event) {
     const lng = (parseFloat(parts[1]) - 2560)/29;
     const distancia = calcularDistancia(lat, lng, pos.coords.latitude, pos.coords.longitude);
 
-    // Estado del NRF en la página
-    const estadoNRF = parts[2];
+    // Estado del NRF en la página, valor de NRF del BLE
+    const valorNRF = parts[2];
     if (valorNRF === 'Y') {
-        estadoElem.innerHTML = "NRF OK ✅";
-        estadoElem.style.color = "#24af37"; // verde
+        estadoNRF.innerHTML = "NRF OK ✅";
+        estadoNRF.style.color = "#24af37"; // verde
     } else if (valorNRF === 'N') {
-        estadoElem.innerHTML = "Error NRF ❌";
-        estadoElem.style.color = "#d13a30"; // rojo
+        estadoNRF.innerHTML = "Error NRF ❌";
+        estadoNRF.style.color = "#d13a30"; // rojo
     } else {
-        estadoElem.innerHTML = "Estado NRF desconocido";
-        estadoElem.style.color = "#bebebe"; // gris
+        estadoNRF.innerHTML = "Estado NRF desconocido";
+        estadoNRF.style.color = "#bebebe"; // gris
     }
     
     retrievedValue.innerHTML = `${distancia} m`;
