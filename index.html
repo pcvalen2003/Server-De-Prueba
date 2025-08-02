@@ -12,6 +12,11 @@
     <title>ESP32 Web BLE App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 </head>
 <body>
   <h1>ESP32 Web BLE Application</h1>
@@ -21,12 +26,15 @@
   <h2>Fetched Value</h2>
   <p><span id="valueContainer">NaN</span></p>
   <p>Last reading: <span id="timestamp"></span></p>
+  <!-- Cambio MAPA-->
+  <h2>Ubicación en Mapa</h2>
+  <div id="map" style="height: 400px; width: 100%;"></div>
+
   <h2>Control GPIO 2</h2>
   <button id="onButton">ON</button>
   <button id="offButton">OFF</button>
   <p>Last value sent: <span id="valueSent"></span></p>
-  <p><a href="https://randomnerdtutorials.com/">Created by RandomNerdTutorials.com</a></p>
-  <p><a href="https://RandomNerdTutorials.com/esp32-web-bluetooth/">Read the full project here.</a></p>
+  
 </body>
 <script>
     // DOM Elements
@@ -49,7 +57,9 @@
     var bleServer;
     var bleServiceFound;
     var sensorCharacteristicFound;
-
+    // Variables del mapa
+    let map, marker;
+  
     // Connect Button (search for BLE Devices only if BLE is available)
     connectButton.addEventListener('click', (event) => {
         if (isWebBluetoothEnabled()){
@@ -125,28 +135,72 @@
 
         connectToDevice();
     }
+  
 
-    function handleCharacteristicChange(event){
-    const decodedText = new TextDecoder().decode(event.target.value);
-    console.log("Received string:", decodedText);
+    // Inicializar mapa cuando cargue la página
+  window.onload = () => {
+      map = L.map('map').setView([0, 0], 2); // Centro inicial (lat, lng, zoom)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    
+    marker = L.marker([0, 0]).addTo(map)
+        .bindPopup("Posición inicial")
+        .openPopup();
+};
+
+// Llamá a esta función cada vez que recibas coordenadas nuevas
+function updateMap(lat, lng) {
+    if (!map || !marker) return;
+    marker.setLatLng([lat, lng]);
+    map.setView([lat, lng], 15); // Zoom 15 para ver bien la zona
+    marker.setPopupContent(`Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`);
+}
+    //function handleCharacteristicChange(event){
+    //const decodedText = new TextDecoder().decode(event.target.value);
+    //console.log("Received string:", decodedText);
   
-    const parts = decodedText.trim().split(','); // ["23.56", "78.90"]
-    if (parts.length === 2) {
-      const float1 = parseFloat(parts[0]);
-      const float2 = parseFloat(parts[1]);
+    //const parts = decodedText.trim().split(','); // ["23.56", "78.90"]
+    //if (parts.length === 2) {
+      //const float1 = parseFloat(parts[0]);
+      //const float2 = parseFloat(parts[1]);
   
-      console.log("Float 1:", float1);
-      console.log("Float 2:", float2);
+      //console.log("Float 1:", float1);
+      //console.log("Float 2:", float2);
   
       // Mostrar en pantalla
-      retrievedValue.innerHTML = `Sensor 1: ${float1} | Sensor 2: ${float2}`;
-    } else {
-      retrievedValue.innerHTML = "Invalid data format";
-    }
+      //retrievedValue.innerHTML = `Sensor 1: ${float1} | Sensor 2: ${float2}`;
+    //} else {
+      //retrievedValue.innerHTML = "Invalid data format";
+    //}
   
-    timestampContainer.innerHTML = getDateTime();
-  }
+    //timestampContainer.innerHTML = getDateTime();
+  //}
 
+    function handleCharacteristicChange(event){
+        const decodedText = new TextDecoder().decode(event.target.value);
+        console.log("Received string:", decodedText);
+    
+        const parts = decodedText.trim().split(','); // ["-34.90", "-58.38"]
+        if (parts.length === 2) {
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+    
+            console.log("Latitud:", lat);
+            console.log("Longitud:", lng);
+    
+            retrievedValue.innerHTML = `Lat: ${lat} | Lng: ${lng}`;
+            timestampContainer.innerHTML = getDateTime();
+    
+            // Actualizar mapa
+            updateMap(lat, lng);
+    
+        } else {
+            retrievedValue.innerHTML = "Invalid data format";
+        }
+    }
+
+  
     function writeOnCharacteristic(value){
         if (bleServer && bleServer.connected) {
             bleServiceFound.getCharacteristic(ledCharacteristic)
