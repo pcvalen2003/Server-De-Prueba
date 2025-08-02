@@ -163,7 +163,10 @@ tr:nth-child(even) {
 
 #map {
     height: 600px;
-    width: 1000px;
+    width: 100%;
+    max-width: 1000px; /* limitar tamaño en pantallas grandes */
+    border: 1px solid #ccc; /* opcional: un borde sutil */
+    border-radius: 8px;     /* opcional: esquinas redondeadas */
     
 }
 
