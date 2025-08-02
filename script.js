@@ -19,6 +19,10 @@ var bleServer, bleServiceFound, sensorCharacteristicFound;
 // Mapa
 let map, bleMarker, pcMarker;
 
+let PC_lat = null;
+let PC_lng = null;
+
+
 // Al cargar la página
 window.onload = () => {
   initMap();
@@ -69,7 +73,7 @@ function handleCharacteristicChange(event) {
   if (parts.length === 3) {
     const lat = (parseFloat(parts[0]) - 2560)/29;
     const lng = (parseFloat(parts[1]) - 2560)/29;
-    const distancia = calcularDistancia(lat, lng, pos.coords.latitude, pos.coords.longitude);
+    const distancia = calcularDistancia(lat, lng, PC_lat, PC_lng);
 
     // Estado del NRF en la página, valor de NRF del BLE
     const valorNRF = parts[2];
@@ -169,10 +173,10 @@ function getUserLocation() {
   }
 
   navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-    pcMarker.setLatLng([lat, lng]);
-    pcMarker.setPopupContent(`Home: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    PC_lat = pos.coords.latitude;
+    PC_lng = pos.coords.longitude;
+    pcMarker.setLatLng([PC_lat, PC_lng]);
+    pcMarker.setPopupContent(`Home: ${PC_lat.toFixed(5)}, ${PC_lng.toFixed(5)}`);
   }, err => {
     console.warn("Error al obtener ubicación:", err.message);
   });
