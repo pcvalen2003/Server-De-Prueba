@@ -119,17 +119,19 @@ function initMap() {
 
   bleMarker = L.marker([0, 0], { icon: redIcon() })
     .addTo(map)
-    .bindPopup("Posición BLE");
+    .bindPopup("USV")
+    .openPopup();
 
   pcMarker = L.marker([0, 0], { icon: blueIcon() })
     .addTo(map)
-    .bindPopup("Tu ubicación");
+    .bindPopup("Home")
+    .openPopup();;
 }
 
 function updateBleMarker(lat, lng) {
   bleMarker.setLatLng([lat, lng]);
-  bleMarker.setPopupContent(`BLE: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-  map.setView([lat, lng], 15);
+  bleMarker.setPopupContent(`USV: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+//  map.setView([lat, lng], 15);
 }
 
 function getUserLocation() {
@@ -142,7 +144,7 @@ function getUserLocation() {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
     pcMarker.setLatLng([lat, lng]);
-    pcMarker.setPopupContent(`Tu posición: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    pcMarker.setPopupContent(`Home: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
   }, err => {
     console.warn("Error al obtener ubicación:", err.message);
   });
