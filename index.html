@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>ESP32 Web BLE + Mapa</title>
+  <title>USV: control local</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -10,27 +10,27 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-  <h1>ESP32 Web BLE + Mapa</h1>
+  <h1>USV: control local</h1>
 
   <section>
-    <button id="connectBleButton">Conectar BLE</button>
-    <button id="disconnectBleButton">Desconectar BLE</button>
-    <p>Estado BLE: <strong><span id="bleState" style="color:#d13a30;">Desconectado</span></strong></p>
+    <button id="connectBleButton">Conectar estación</button>
+    <button id="disconnectBleButton">Desconectar estación</button>
+    <p>Estado estación: <strong><span id="bleState" style="color:#d13a30;">Desconectado</span></strong></p>
   </section>
 
   <section>
-    <h2>Coordenadas BLE</h2>
+    <h2>Coordenadas USV</h2>
     <p><span id="valueContainer">NaN</span></p>
     <p>Última lectura: <span id="timestamp"></span></p>
   </section>
 
   <section>
-    <h2>Ubicación en Mapa</h2>
-    <div id="map" style="height: 400px; width: 100%;"></div>
+    <h2>Mapa</h2>
+    <div id="map"></div>
   </section>
 
   <section>
-    <h2>Control GPIO 2</h2>
+    <h2>Control de rumbo</h2>
     <button id="onButton">ON</button>
     <button id="offButton">OFF</button>
     <p>Último valor enviado: <span id="valueSent"></span></p>
