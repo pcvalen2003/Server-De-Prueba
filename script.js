@@ -67,8 +67,8 @@ function handleCharacteristicChange(event) {
   const decodedText = new TextDecoder().decode(event.target.value).trim();
   const parts = decodedText.split(',');
   if (parts.length === 2) {
-    const lat = parseFloat(parts[0]);
-    const lng = parseFloat(parts[1]);
+    const lat = (parseFloat(parts[0]) - 2560)/29;
+    const lng = (parseFloat(parts[1]) - 2560)/29;
 
     retrievedValue.innerHTML = `Lat: ${lat} | Lng: ${lng}`;
     timestampContainer.innerHTML = getDateTime();
