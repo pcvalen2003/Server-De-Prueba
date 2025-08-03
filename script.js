@@ -74,7 +74,9 @@ function connectToDevice() {
 // - 1B nrf_quality
 
 function handleCharacteristicChange(event) {
+  const value = event.target.value;
   const buffer = event.target.value.buffer;
+  
   if (value.byteLength !== 34) {
     retrievedValue.innerHTML = "Formato inválido (tamaño incorrecto de ${value.byteLength}B)";
     return;
