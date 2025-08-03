@@ -72,50 +72,45 @@ function connectToDevice() {
 // - 32B ACKpld
 // - 1B nrf_ok 'Y' o 'N'
 // - 1B nrf_quality
-
 function handleCharacteristicChange(event) {
   const value = event.target.value;
-  const buffer = event.target.value.buffer;
-  
-  if (value.byteLength !== 34) {
-    retrievedValue.innerHTML = `Formato inválido (tamaño incorrecto de ${buffer.byteLength}B)`;
+  const buffer = value.buffer;
+
+  if (value.byteLength !== 36) {
+    retrievedValue.innerHTML = `Formato inválido (tamaño incorrecto de ${value.byteLength}B)`;
     return;
   }
-  
-  const dataView = new DataView(buffer);
 
+  const dataView = new DataView(buffer);
   let offset = 0;
 
-  const ACK_estado = dataView.getUint8(offset); offset += 1;
+  // === ACKpld_t ===
+  const latitud     = dataView.getFloat32(offset, true); offset += 4;
+  const longitud    = dataView.getFloat32(offset, true); offset += 4;
+  const velocidad   = dataView.getFloat32(offset, true); offset += 4;
 
-  const longitud = dataView.getFloat32(offset, true); offset += 4;
-  const latitud = dataView.getFloat32(offset, true); offset += 4;
-
-  const bat_level = dataView.getUint8(offset); offset += 1;
+  const ACK_estado  = dataView.getUint8(offset); offset += 1;
+  const bat_level   = dataView.getUint8(offset); offset += 1;
   const bat_current = dataView.getUint8(offset); offset += 1;
-
-  const velocidad = dataView.getFloat32(offset, true); offset += 4;
-  const heading = dataView.getUint16(offset, true); offset += 2;
   const sat_in_view = dataView.getUint8(offset); offset += 1;
-  
-  // --- extra[14] interpretado como datos binarios ---
+
+  const heading     = dataView.getUint16(offset, true); offset += 2;
+
+  // Extra: 14 bytes binarios
   const roll  = dataView.getInt16(offset, true); offset += 2;
   const pitch = dataView.getInt16(offset, true); offset += 2;
-  // Los restantes 10 bytes de extra, si querés, podés usarlos igual:
   const extra_bytes = [];
   for (let i = 0; i < 10; i++) {
     extra_bytes.push(dataView.getUint8(offset++));
   }
-  
-  const nrf_OK = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
-  const nrf_quality = dataView.getUint8(offset);
 
+  // === Campo extra del ble_mensaje_t ===
+  const nrf_OK       = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
+  const nrf_quality  = dataView.getUint8(offset); offset += 1;
 
-  
-  // Coordenadas interpretadas (según tu conversión anterior)
+  // === Procesamiento ===
   const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
 
-  // NRF state
   if (nrf_OK === 'Y') {
     estadoNRF.innerHTML = `NRF OK ✅ (${nrf_quality} reintentos)`;
     estadoNRF.style.color = "#24af37";
@@ -129,19 +124,21 @@ function handleCharacteristicChange(event) {
 
   retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
   timestampContainer.innerHTML = getDateTime();
-
   updateBleMarker(latitud, longitud);
-  
-  // Muestro todo en consola
+
+  // === Debug en consola ===
+  console.log(`Lat: ${latitud}, Lng: ${longitud}`);
+  console.log(`Distancia: ${distancia.toFixed(1)} m`);
+  console.log(`Velocidad: ${velocidad.toFixed(2)} m/s`);
   console.log(`Batería: ${bat_level}%`);
   console.log(`Corriente: ${bat_current} mA`);
-  console.log(`Velocidad: ${velocidad.toFixed(2)} m/s`);
   console.log(`Heading: ${heading}°`);
   console.log(`Satélites: ${sat_in_view}`);
-  console.log(`Extra: "${extra}"`);
-  console.log(`NRF calidad: ${nrf_quality}`);
-  console.log("Extra:", extraText);
+  console.log(`Roll: ${roll}, Pitch: ${pitch}`);
+  console.log(`Extra (resto):`, extra_bytes);
+  console.log(`NRF estado: ${nrf_OK}, calidad: ${nrf_quality}`);
 }
+
 
 
 function calcularDistancia(lat1, lon1, lat2, lon2) {
