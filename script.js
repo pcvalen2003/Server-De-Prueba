@@ -78,7 +78,7 @@ function handleCharacteristicChange(event) {
   const buffer = event.target.value.buffer;
   
   if (value.byteLength !== 34) {
-    retrievedValue.innerHTML = "Formato inválido (tamaño incorrecto de ${value.byteLength}B)";
+    retrievedValue.innerHTML = `Formato inválido (tamaño incorrecto de ${buffer.byteLength}B)`;
     return;
   }
   
