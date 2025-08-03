@@ -75,6 +75,11 @@ function connectToDevice() {
 
 function handleCharacteristicChange(event) {
   const buffer = event.target.value.buffer;
+  if (value.byteLength !== 34) {
+    retrievedValue.innerHTML = "Formato inválido (tamaño incorrecto de ${value.byteLength}B)";
+    return;
+  }
+  
   const dataView = new DataView(buffer);
 
   let offset = 0;
@@ -90,15 +95,21 @@ function handleCharacteristicChange(event) {
   const velocidad = dataView.getFloat32(offset, true); offset += 4;
   const heading = dataView.getUint16(offset, true); offset += 2;
   const sat_in_view = dataView.getUint8(offset); offset += 1;
-
-  // Extra de 14 bytes (pueden ser texto o binario)
-  const extraBytes = new Uint8Array(buffer, offset, 14);
-  const extraText = new TextDecoder().decode(extraBytes).replace(/\0/g, ''); // Elimina null terminators
-  offset += 14;
-
+  
+  // --- extra[14] interpretado como datos binarios ---
+  const roll  = dataView.getInt16(offset, true); offset += 2;
+  const pitch = dataView.getInt16(offset, true); offset += 2;
+  // Los restantes 10 bytes de extra, si querés, podés usarlos igual:
+  const extra_bytes = [];
+  for (let i = 0; i < 10; i++) {
+    extra_bytes.push(dataView.getUint8(offset++));
+  }
+  
   const nrf_OK = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
   const nrf_quality = dataView.getUint8(offset);
 
+
+  
   // Coordenadas interpretadas (según tu conversión anterior)
   const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
 
@@ -118,12 +129,15 @@ function handleCharacteristicChange(event) {
   timestampContainer.innerHTML = getDateTime();
 
   updateBleMarker(latitud, longitud);
-
-  // Como ejemplo de extra voy a estar recibiendo roll y pitch:
-  const pitch = dataView.getUint16(offset, true); offset += 2;
-  const roll = dataView.getUint16(offset, true); offset += 2;
   
-  // Para mostrar el extra
+  // Muestro todo en consola
+  console.log(`Batería: ${bat_level}%`);
+  console.log(`Corriente: ${bat_current} mA`);
+  console.log(`Velocidad: ${velocidad.toFixed(2)} m/s`);
+  console.log(`Heading: ${heading}°`);
+  console.log(`Satélites: ${sat_in_view}`);
+  console.log(`Extra: "${extra}"`);
+  console.log(`NRF calidad: ${nrf_quality}`);
   console.log("Extra:", extraText);
 }
 
