@@ -67,35 +67,66 @@ function connectToDevice() {
   .catch(err => console.error("Error:", err));
 }
 
+
+// Recibir la struct por BLE compuesta por
+// - 32B ACKpld
+// - 1B nrf_ok 'Y' o 'N'
+// - 1B nrf_quality
+
 function handleCharacteristicChange(event) {
-  const decodedText = new TextDecoder().decode(event.target.value).trim();
-  const parts = decodedText.split(',');
-  if (parts.length === 3) {
-    const lat = (parseFloat(parts[0]) - 2560)/29;
-    const lng = (parseFloat(parts[1]) - 2560)/29;
-    const distancia = calcularDistancia(lat, lng, PC_lat, PC_lng);
+  const buffer = event.target.value.buffer;
+  const dataView = new DataView(buffer);
 
-    // Estado del NRF en la página, valor de NRF del BLE
-    const valorNRF = parts[2];
-    if (valorNRF === 'Y') {
-        estadoNRF.innerHTML = "NRF OK ✅";
-        estadoNRF.style.color = "#24af37"; // verde
-    } else if (valorNRF === 'N') {
-        estadoNRF.innerHTML = "Error NRF ❌";
-        estadoNRF.style.color = "#d13a30"; // rojo
-    } else {
-        estadoNRF.innerHTML = "Estado NRF desconocido";
-        estadoNRF.style.color = "#bebebe"; // gris
-    }
-    
-    retrievedValue.innerHTML = `${distancia} m`;
-    timestampContainer.innerHTML = getDateTime();
+  let offset = 0;
 
-    updateBleMarker(lat, lng);
+  const ACK_estado = dataView.getUint8(offset); offset += 1;
+
+  const longitud = dataView.getFloat32(offset, true); offset += 4;
+  const latitud = dataView.getFloat32(offset, true); offset += 4;
+
+  const bat_level = dataView.getUint8(offset); offset += 1;
+  const bat_current = dataView.getUint8(offset); offset += 1;
+
+  const velocidad = dataView.getFloat32(offset, true); offset += 4;
+  const heading = dataView.getUint16(offset, true); offset += 2;
+  const sat_in_view = dataView.getUint8(offset); offset += 1;
+
+  // Extra de 14 bytes (pueden ser texto o binario)
+  const extraBytes = new Uint8Array(buffer, offset, 14);
+  const extraText = new TextDecoder().decode(extraBytes).replace(/\0/g, ''); // Elimina null terminators
+  offset += 14;
+
+  const nrf_OK = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
+  const nrf_quality = dataView.getUint8(offset);
+
+  // Coordenadas interpretadas (según tu conversión anterior)
+  const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
+
+  // NRF state
+  if (nrf_OK === 'Y') {
+    estadoNRF.innerHTML = `NRF OK ✅ (${nrf_quality} reintentos)`;
+    estadoNRF.style.color = "#24af37";
+  } else if (nrf_OK === 'N') {
+    estadoNRF.innerHTML = `Error NRF ❌`;
+    estadoNRF.style.color = "#d13a30";
   } else {
-    retrievedValue.innerHTML = "Formato inválido";
+    estadoNRF.innerHTML = `Estado NRF desconocido`;
+    estadoNRF.style.color = "#bebebe";
   }
+
+  retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
+  timestampContainer.innerHTML = getDateTime();
+
+  updateBleMarker(latitud, longitud);
+
+  // Como ejemplo de extra voy a estar recibiendo roll y pitch:
+  const pitch = dataView.getUint16(offset, true); offset += 2;
+  const roll = dataView.getUint16(offset, true); offset += 2;
+  
+  // Para mostrar el extra
+  console.log("Extra:", extraText);
 }
+
 
 function calcularDistancia(lat1, lon1, lat2, lon2) {
     const R = 6371000; // radio de la Tierra en metros
