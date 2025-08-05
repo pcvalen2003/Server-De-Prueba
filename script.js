@@ -110,6 +110,8 @@ function handleCharacteristicChange(event) {
 
   // === Procesamiento ===
   const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
+  const tension_bat = calcularTensionBateria(bat_level);
+  const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
 
   if (nrf_OK === 'Y') {
     estadoNRF.innerHTML = `NRF OK ✅ (${nrf_quality} reintentos)`;
@@ -130,7 +132,7 @@ function handleCharacteristicChange(event) {
   console.log(`Lat: ${latitud}, Lng: ${longitud}`);
   console.log(`Distancia: ${distancia.toFixed(1)} m`);
   console.log(`Velocidad: ${velocidad.toFixed(2)} m/s`);
-  console.log(`Batería: ${bat_level}%`);
+  console.log(`Batería: ${porcentaje_bat}%`);
   console.log(`Corriente: ${bat_current} mA`);
   console.log(`Heading: ${heading}°`);
   console.log(`Satélites: ${sat_in_view}`);
@@ -155,11 +157,35 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
     return Math.round(R * c); // distancia en metros (entero)
 }
 
-function CalcularCarga(bat_level,bat_current){
+function calcularTensionBateria(bat_level) {
+  const tension = ((bat_level * 2 + 3584) / 4095) * 3.3 * 3.7;
+  return tension;
+}
 
+function estimarPorcentajeBateria(tension) {
+  let porcentaje;
 
+  if (tension >= 12.2) {
+    porcentaje = 100;
+  } else if (tension >= 12.1) {
+    porcentaje = 90;
+  } else if (tension >= 12) {
+    porcentaje = 80;
+  } else if (tension >= 11.7) {
+    porcentaje = 70;
+  } else if (tension >= 11.55) {
+    porcentaje = 60;
+  } else if (tension >= 11.4) {
+    porcentaje = 50;
+  } else if (tension >= 11.25) {
+    porcentaje = 40;
+  } else if (tension >= 11.1) {
+    porcentaje = 30;
+  } else {
+    porcentaje = 20;
+  } 
 
-  
+  return porcentaje;
 }
 
 function writeOnCharacteristic(value) {
