@@ -25,7 +25,13 @@
     <p>Última lectura: <span id="timestamp"></span></p>
     <p>Nivel de batería: <span id="batteryLevel">--</span>%</p>
     <p id="lowBatteryWarning" style="color: red; font-weight: bold;"></p>
-
+     <!-- Indicador visual de batería en forma de barco -->
+    <div class="battery-container">
+      <div class="battery-fill" id="batteryFill"></div>
+      <svg class="boat-outline" viewBox="0 0 100 75" preserveAspectRatio="none">
+        <polygon points="20,75 80,75 100,45 50,0 0,45" fill="none" stroke="#333" stroke-width="3"/>
+      </svg>
+    </div>
   </section>
 
   <section>
