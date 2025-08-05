@@ -123,10 +123,15 @@ function handleCharacteristicChange(event) {
     estadoNRF.innerHTML = `Estado NRF desconocido`;
     estadoNRF.style.color = "#bebebe";
   }
+  
+  if (porcentaje_bat === 20) {
+    console.log("⚠️ Batería al 20%");
+  }
 
   retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
   timestampContainer.innerHTML = getDateTime();
   updateBleMarker(latitud, longitud);
+  document.getElementById("batteryLevel").textContent = porcentaje_bat;
 
   // === Debug en consola ===
   console.log(`Lat: ${latitud}, Lng: ${longitud}`);
