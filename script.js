@@ -7,6 +7,7 @@ const retrievedValue = document.getElementById('valueContainer');
 const latestValueSent = document.getElementById('valueSent');
 const bleStateContainer = document.getElementById('bleState');
 const timestampContainer = document.getElementById('timestamp');
+const batteryFill = document.getElementById('batteryFill');
 
 // BLE Config
 var deviceName = 'ESP32';
@@ -113,6 +114,8 @@ function handleCharacteristicChange(event) {
   const tension_bat = calcularTensionBateria(bat_level);
   const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
   document.getElementById("batteryLevel").textContent = porcentaje_bat;
+  updateBatteryVisual(porcentaje_bat);
+
 // Mostrar alerta si es 20%
   if (porcentaje_bat === 20) {
     document.getElementById("lowBatteryWarning").textContent = "⚠️ Batería baja: 20%";
@@ -288,4 +291,17 @@ function blueIcon() {
     shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
     iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
   });
+}
+
+function updateBatteryVisual(level) {
+  const percent = Math.max(0, Math.min(100, parseInt(level)));
+  batteryFill.style.height = percent + '%';
+
+  if (percent > 50) {
+    batteryFill.style.backgroundColor = 'green';
+  } else if (percent > 20) {
+    batteryFill.style.backgroundColor = 'orange';
+  } else {
+    batteryFill.style.backgroundColor = 'red';
+  }
 }
