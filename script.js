@@ -112,7 +112,13 @@ function handleCharacteristicChange(event) {
   const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
   const tension_bat = calcularTensionBateria(bat_level);
   const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
-
+  document.getElementById("batteryLevel").textContent = porcentaje_bat;
+// Mostrar alerta si es 20%
+  if (porcentaje_bat === 20) {
+    document.getElementById("lowBatteryWarning").textContent = "⚠️ Batería baja: 20%";
+  } else {
+    document.getElementById("lowBatteryWarning").textContent = "";
+  }
   if (nrf_OK === 'Y') {
     estadoNRF.innerHTML = `NRF OK ✅ (${nrf_quality} reintentos)`;
     estadoNRF.style.color = "#24af37";
@@ -124,9 +130,7 @@ function handleCharacteristicChange(event) {
     estadoNRF.style.color = "#bebebe";
   }
   
-  if (porcentaje_bat === 20) {
-    console.log("⚠️ Batería al 20%");
-  }
+ 
 
   retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
   timestampContainer.innerHTML = getDateTime();
