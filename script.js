@@ -155,6 +155,13 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
     return Math.round(R * c); // distancia en metros (entero)
 }
 
+function CalcularCarga(bat_level,bat_current){
+
+
+
+  
+}
+
 function writeOnCharacteristic(value) {
   if (bleServiceFound) {
     bleServiceFound.getCharacteristic(ledCharacteristic)
