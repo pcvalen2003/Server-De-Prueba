@@ -7,7 +7,7 @@ const retrievedValue = document.getElementById('valueContainer');
 const latestValueSent = document.getElementById('valueSent');
 const bleStateContainer = document.getElementById('bleState');
 const timestampContainer = document.getElementById('timestamp');
-const batteryFill = document.getElementById('batteryFill');
+const batteryFillOverlay = document.getElementById('batteryFillOverlay');
 
 // BLE Config
 var deviceName = 'ESP32';
@@ -293,15 +293,16 @@ function blueIcon() {
   });
 }
 
+
 function updateBatteryVisual(level) {
   const percent = Math.max(0, Math.min(100, parseInt(level)));
-  batteryFill.style.height = percent + '%';
+  batteryFillOverlay.style.height = percent + '%';
 
   if (percent > 50) {
-    batteryFill.style.backgroundColor = 'green';
+    batteryFillOverlay.style.backgroundColor = 'green';
   } else if (percent > 20) {
-    batteryFill.style.backgroundColor = 'orange';
+    batteryFillOverlay.style.backgroundColor = 'orange';
   } else {
-    batteryFill.style.backgroundColor = 'red';
+    batteryFillOverlay.style.backgroundColor = 'red';
   }
 }
