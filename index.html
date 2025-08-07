@@ -776,6 +776,8 @@
             // Parse NRF status
             const nrf_OK = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
             const nrf_quality = dataView.getUint8(offset); offset += 1;
+            const throttle = dataView.getUint8(offset); offset += 1;
+            const direccion = dataView.getUint8(offset); offset += 1;
 
             // Process data
             const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
@@ -786,6 +788,8 @@
             updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
             updateBleMarker(latitud, longitud);
             timestampContainer.innerHTML = getDateTime();
+            updateThrottle(throttle);
+            updateDireccion(direccion);
 
             console.log(`Lat: ${latitud}, Lng: ${longitud}, Heading: ${heading}°, Battery: ${porcentaje_bat}%`);
         }
@@ -994,6 +998,23 @@
             } else {
                 batteryFillOverlay.style.backgroundColor = 'var(--danger-red)';
             }
+        }
+
+        // throttle: valor entre 0 - 255
+        function updateThrottle(throttle) {
+          const lever = document.getElementById('leverHandle');
+          const percentage = throttle / 255;
+          const maxHeight = 160; // igual al height de throttle-lever
+          const handleHeight = 30;
+          const bottom = 5 + percentage * (maxHeight - handleHeight - 10); // 10px de margen
+          lever.style.bottom = `${bottom}px`;
+        }
+        
+        // dirección: valor entre 0 - 255 (128 centro)
+        function updateDirection(direction) {
+          const arrow = document.getElementById('directionArrow');
+          const angle = (direction - 128) / 127 * 45; // Mapea a -45 a +45 grados
+          arrow.style.transform = `rotate(${angle}deg)`;
         }
     </script>
 </body>
