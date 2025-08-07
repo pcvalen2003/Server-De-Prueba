@@ -1018,7 +1018,7 @@
         }
         
         // dirección: valor entre 0 - 255 (128 centro)
-        function updateDirection(direction) {
+        function updateDireccion(direction) {
           const arrow = document.getElementById('directionArrow');
           const angle = (direction - 128) / 127 * 45; // Mapea a -45 a +45 grados
           arrow.style.transform = `rotate(${angle}deg)`;
