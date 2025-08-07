@@ -788,11 +788,11 @@
             const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
 
             // Update UI
-            if(nrf_quality !== 15){
+            if(nrf_quality === 15){
+                noUSV_UI(nrf_OK);
+            } else {
                 updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
                 updateBleMarker(latitud, longitud);
-            } else {
-                noUSV_UI();
             }
             timestampContainer.innerHTML = getDateTime();
             updateThrottle(throttle);
@@ -843,7 +843,7 @@
             }
         }
 
-        function noUSV_UI() {
+        function noUSV_UI(nrf_OK) {
             // Distance
             retrievedValue.innerHTML = `-- m`;
             
