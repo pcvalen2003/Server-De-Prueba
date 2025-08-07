@@ -792,7 +792,8 @@
                 noUSV_UI(nrf_OK);
             } else {
                 updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
-                updateBleMarker(latitud, longitud);
+                if(latitud !== 0 && longitud !== 0)
+                    updateBleMarker(latitud, longitud);
             }
             timestampContainer.innerHTML = getDateTime();
             updateThrottle(throttle);
@@ -803,7 +804,8 @@
 
         function updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality) {
             // Distance
-            retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
+            if(distancia < 10000)
+                retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
             
             // Battery
             batteryLevel.textContent = porcentaje_bat + '%';
