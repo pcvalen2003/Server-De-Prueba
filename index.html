@@ -1,74 +1,936 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>USV: control local</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USV: Control Local</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        :root {
+            --primary-orange: #c47230;
+            --success-green: #b3e991;
+            --warning-yellow: #ffbd59;
+            --dark-gray: #323232;
+            --light-bg: #f8f9fa;
+            --white: #ffffff;
+            --danger-red: #ff6b6b;
+            --shadow: rgba(50, 50, 50, 0.1);
+            --shadow-strong: rgba(50, 50, 50, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--light-bg) 0%, #e9ecef 100%);
+            color: var(--dark-gray);
+            padding: 10px;
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            max-width: 100%;
+            margin: 0 auto;
+            display: grid;
+            gap: 15px;
+            grid-template-areas: 
+                "header"
+                "status"
+                "map"
+                "telemetry"
+                "controls";
+            grid-template-rows: auto auto 1fr auto auto;
+            height: calc(100vh - 20px);
+        }
+
+        /* Mobile landscape */
+        @media (orientation: landscape) and (max-height: 600px) {
+            .main-container {
+                grid-template-areas: 
+                    "header header"
+                    "status status"
+                    "map telemetry"
+                    "controls controls";
+                grid-template-columns: 2fr 1fr;
+                grid-template-rows: auto auto 1fr auto;
+            }
+        }
+
+        /* Tablet and desktop */
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            .main-container {
+                max-width: 1200px;
+                grid-template-areas: 
+                    "header header header"
+                    "status status status"
+                    "telemetry map controls"
+                    "telemetry map controls";
+                grid-template-columns: 1fr 2fr 1fr;
+                grid-template-rows: auto auto 1fr 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px var(--shadow);
+            border: 1px solid rgba(196, 114, 48, 0.1);
+        }
+        
+        .panel-title {
+            color: var(--primary-orange);
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--primary-orange);
+            border-radius: 2px;
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            text-align: center;
+            padding: 15px 20px;
+        }
+
+        .header h1 {
+            color: var(--primary-orange);
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            grid-area: status;
+            padding: 15px 20px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: rgba(179, 233, 145, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(179, 233, 145, 0.3);
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .status-indicator.connected {
+            background: var(--success-green);
+            box-shadow: 0 0 10px rgba(179, 233, 145, 0.5);
+        }
+        
+        .status-indicator.disconnected {
+            background: var(--danger-red);
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+        
+        .status-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        /* Map Container */
+        .map-container {
+            grid-area: map;
+            position: relative;
+            min-height: 300px;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            border: 2px solid rgba(196, 114, 48, 0.2);
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px var(--shadow);
+            z-index: 1000;
+        }
+        
+        .distance-display {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-orange);
+        }
+        
+        /* Telemetry Panel */
+        .telemetry-panel {
+            grid-area: telemetry;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .telemetry-section {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-orange);
+            margin-bottom: 12px;
+        }
+        
+        /* Navigation Data */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .nav-data {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .data-label {
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+        
+        .data-value {
+            font-weight: 600;
+            color: var(--primary-orange);
+        }
+        
+        .heading-display {
+            width: 80px;
+            height: 80px;
+            border: 3px solid var(--primary-orange);
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, var(--white), #f8f9fa);
+        }
+        
+        .compass-needle {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform-origin: bottom center;
+            width: 3px;
+            height: 32px;
+            background: linear-gradient(to top, var(--danger-red), var(--warning-yellow));
+            transform: translateX(-50%) rotate(0deg);
+            border-radius: 2px;
+            transition: transform 0.5s ease;
+        }
+        
+        .compass-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: var(--dark-gray);
+            border-radius: 50%;
+        }
+
+        /* Battery Display */
+        .battery-section {
+            position: relative;
+        }
+
+        .battery-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .battery-visual {
+            position: relative;
+            width: 60px;
+            height: 100px;
+            border: 3px solid var(--primary-orange);
+            border-radius: 8px;
+            background: var(--light-bg);
+            overflow: hidden;
+        }
+
+        .battery-fill-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20%;
+            background: var(--danger-red);
+            transition: height 0.5s ease, background-color 0.5s ease;
+        }
+
+        .battery-info {
+            flex: 1;
+        }
+
+        .battery-percentage {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-orange);
+        }
+
+        .battery-percentage.critical {
+            color: var(--danger-red);
+            animation: pulse 1s infinite;
+        }
+
+        .low-battery-warning {
+            background: rgba(255, 107, 107, 0.1);
+            border: 2px solid var(--danger-red);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            text-align: center;
+            animation: urgent-blink 0.8s infinite;
+        }
+        
+        @keyframes urgent-blink {
+            0%, 100% { background: rgba(255, 107, 107, 0.1); }
+            50% { background: rgba(255, 107, 107, 0.2); }
+        }
+        
+        .alert-text {
+            color: var(--danger-red);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        /* Sensors Grid */
+        .sensors-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .sensor-item {
+            background: rgba(179, 233, 145, 0.05);
+            border: 1px solid rgba(179, 233, 145, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .sensor-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-orange);
+            margin-bottom: 4px;
+        }
+        
+        .sensor-label {
+            font-size: 10px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Controls Section */
+        .controls-section {
+            grid-area: controls;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .connection-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-connect {
+            background: var(--success-green);
+            color: var(--dark-gray);
+        }
+
+        .btn-disconnect {
+            background: var(--danger-red);
+            color: var(--white);
+        }
+        
+        .btn-on {
+            background: var(--success-green);
+            color: var(--dark-gray);
+        }
+        
+        .btn-off {
+            background: var(--dark-gray);
+            color: var(--white);
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-strong);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .last-sent {
+            text-align: center;
+            font-size: 12px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 767px) {
+            .main-container {
+                gap: 10px;
+            }
+            
+            .panel {
+                padding: 15px;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .sensors-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .sensor-item {
+                padding: 8px;
+            }
+            
+            .connection-controls {
+                flex-direction: column;
+            }
+
+            .battery-container {
+                justify-content: center;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Hidden elements for compatibility */
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
-  <h1>USV: control local</h1>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="panel header">
+            <h1>🚤 USV: Control Local</h1>
+        </div>
 
-  <section>
-    <button id="connectBleButton">Conectar estación</button>
-    <button id="disconnectBleButton">Desconectar estación</button>
-    <p>Estado estación: <strong><span id="bleState" style="color:#d13a30;">Desconectado</span></strong></p>
-    <p id="estadoNRF" class="gray-label">Esperando estado NRF...</p>
-  </section>
+        <!-- Status Bar -->
+        <div class="panel status-bar">
+            <div class="panel-title">Estado del Sistema</div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-indicator disconnected" id="bleStatusIndicator"></div>
+                    <span class="status-text">Estación: <span id="bleState" style="color:#d13a30;">Desconectado</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator disconnected" id="nrfStatusIndicator"></div>
+                    <span class="status-text" id="estadoNRF">Esperando estado NRF...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Container -->
+        <div class="panel map-container">
+            <div class="panel-title">📍 Mapa y Posición</div>
+            <div class="map-overlay">
+                <div class="distance-display">
+                    Distancia: <span id="valueContainer">NaN</span>
+                </div>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                    Última lectura: <span id="timestamp"></span>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+        
+        <!-- Telemetry Panel -->
+        <div class="telemetry-panel">
+            <!-- Navigation Data -->
+            <div class="telemetry-section">
+                <div class="section-title">🧭 Navegación</div>
+                <div class="nav-grid">
+                    <div class="nav-data">
+                        <div class="data-row">
+                            <span class="data-label">Heading:</span>
+                            <span class="data-value" id="headingValue">--°</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Velocidad:</span>
+                            <span class="data-value" id="velocidadValue">-- m/s</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Satélites:</span>
+                            <span class="data-value" id="satelitesValue">--</span>
+                        </div>
+                    </div>
+                    <div class="heading-display">
+                        <div class="compass-needle" id="compassNeedle"></div>
+                        <div class="compass-center"></div>
+                    </div>
+                </div>
+            </div>
 
-  <section>
-    <h2>Distancia del USV</h2>
-    <p><span id="valueContainer">NaN</span></p>
-    <p>Última lectura: <span id="timestamp"></span></p>
-    <p>Nivel de batería: <span id="batteryLevel">--</span>%</p>
-    <p id="lowBatteryWarning" style="color: red; font-weight: bold;"></p>
-    <div class="battery-visual">
-    <div class="battery-fill-overlay" id="batteryFillOverlay"></div>
-    <div class="boat-svg">
-    <!-- Tu barco SVG -->
-    <svg fill="#000000" height="200px" width="200px" version="1.1"
-         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 475.04 475.04">
-      <path d="M474.057,253.807c-1.334-2.341-3.821-3.788-6.517-3.788H344.527l-31.122-61.4c-0.238-0.471-0.526-0.916-0.858-1.327 
-      c-4.803-5.935-12.059-14.904-24.214-14.904H169.711l-14.466-65.499c-0.759-3.436-3.805-5.882-7.323-5.882h-64
-      c-2.219,0-4.324,0.982-5.749,2.684c-1.425,1.701-2.023,3.945-1.635,6.13l13.353,75.051l-60.441,65.147H7.5 
-      c-4.143,0-7.5,3.358-7.5,7.5v85.15c0,0.516,0.053,1.03,0.158,1.534c3.612,17.285,19.05,29.83,36.708,29.83H276.16 
-      c39.849,0,79.213-10.425,113.838-30.148c34.624-19.723,63.669-48.265,83.993-82.541 
-      C475.366,259.026,475.391,256.149,474.057,253.807z M276.16,359.033H36.866c-10.354,0-19.437-7.189-21.866-17.196v-22.311h360.354 
-      c4.143,0,7.5-3.358,7.5-7.5s-3.357-7.5-7.5-7.5H15v-39.507h293.02c4.143,0,7.5-3.358,7.5-7.5c0-4.142-3.357-7.5-7.5-7.5H49.91 
-      l43.272-46.642l4.788,26.91c0.646,3.634,3.809,6.188,7.375,6.188c0.436,0,0.879-0.039,1.322-0.117 
-      c4.078-0.726,6.796-4.62,6.07-8.698L92.873,116.007h49.023l14.467,65.499c0.848,3.84,4.499,6.33,8.329,5.809 
-      c0.326,0.043,0.656,0.073,0.995,0.073h122.646c4.083,0,7.319,2.939,12.057,8.73l5.29,10.437h-80.959c-4.143,0-7.5,3.358-7.5,7.5 
-      s3.357,7.5,7.5,7.5h88.563l19.948,39.355c0.009,0.017,0.021,0.032,0.029,0.049c0.149,0.287,0.313,0.564,0.496,0.827 
-      c0.038,0.056,0.081,0.107,0.121,0.161c0.146,0.198,0.301,0.389,0.465,0.572c0.063,0.071,0.125,0.142,0.19,0.209 
-      c0.203,0.21,0.416,0.411,0.642,0.596c0.052,0.043,0.108,0.08,0.161,0.121c0.193,0.15,0.394,0.289,0.601,0.42 
-      c0.073,0.046,0.145,0.09,0.219,0.133c0.249,0.145,0.504,0.279,0.77,0.395c0.012,0.005,0.023,0.012,0.035,0.017 
-      c0.286,0.123,0.582,0.224,0.884,0.311c0.064,0.019,0.129,0.033,0.194,0.05c0.235,0.061,0.473,0.11,0.716,0.148 
-      c0.084,0.013,0.167,0.028,0.25,0.038c0.281,0.034,0.566,0.056,0.855,0.058c0.022,0,0.044,0.005,0.066,0.005 
-      c0.009,0,0.017-0.001,0.025-0.001H453.88C414.118,323.328,347.209,359.033,276.16,359.033z"/>
-      </svg>
+            <!-- Battery Section -->
+            <div class="telemetry-section battery-section">
+                <div class="section-title">🔋 Estado de Batería</div>
+                <div class="battery-container">
+                    <div class="battery-visual">
+                        <div class="battery-fill-overlay" id="batteryFillOverlay"></div>
+                    </div>
+                    <div class="battery-info">
+                        <div class="battery-percentage" id="batteryLevel">--%</div>
+                        <div style="font-size: 12px; color: #666;">Corriente: <span id="corrienteValue">-- mA</span></div>
+                    </div>
+                </div>
+                <div class="low-battery-warning hidden" id="lowBatteryWarning">
+                    <div class="alert-text">⚠️ BATERÍA CRÍTICA - REGRESAR DE INMEDIATO</div>
+                </div>
+            </div>
+            
+            <!-- Additional Sensors -->
+            <div class="telemetry-section">
+                <div class="section-title">📊 Sensores IMU</div>
+                <div class="sensors-grid">
+                    <div class="sensor-item">
+                        <div class="sensor-value" id="rollValue">--°</div>
+                        <div class="sensor-label">Roll</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-value" id="pitchValue">--°</div>
+                        <div class="sensor-label">Pitch</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls Section -->
+        <div class="panel controls-section">
+            <div class="panel-title">🎮 Control de Rumbo</div>
+            
+            <div class="connection-controls">
+                <button class="control-btn btn-connect" id="connectBleButton">Conectar Estación</button>
+                <button class="control-btn btn-disconnect" id="disconnectBleButton">Desconectar</button>
+            </div>
+
+            <div class="connection-controls">
+                <button class="control-btn btn-on" id="onButton">ON</button>
+                <button class="control-btn btn-off" id="offButton">OFF</button>
+            </div>
+
+            <div class="last-sent">
+                Último valor enviado: <span id="valueSent">--</span>
+            </div>
+        </div>
     </div>
-  </div>
 
-  </section>
+    <script>
+        // DOM Elements
+        const connectButton = document.getElementById('connectBleButton');
+        const disconnectButton = document.getElementById('disconnectBleButton');
+        const onButton = document.getElementById('onButton');
+        const offButton = document.getElementById('offButton');
+        const retrievedValue = document.getElementById('valueContainer');
+        const latestValueSent = document.getElementById('valueSent');
+        const bleStateContainer = document.getElementById('bleState');
+        const timestampContainer = document.getElementById('timestamp');
+        const batteryFillOverlay = document.getElementById('batteryFillOverlay');
+        const estadoNRF = document.getElementById('estadoNRF');
 
-  <section>
-    <h2>Mapa</h2>
-    <div class="map-container">
-      <div id="map"></div>
-    </div>
-  </section>
+        // New elements for enhanced interface
+        const bleStatusIndicator = document.getElementById('bleStatusIndicator');
+        const nrfStatusIndicator = document.getElementById('nrfStatusIndicator');
+        const headingValue = document.getElementById('headingValue');
+        const velocidadValue = document.getElementById('velocidadValue');
+        const satelitesValue = document.getElementById('satelitesValue');
+        const compassNeedle = document.getElementById('compassNeedle');
+        const corrienteValue = document.getElementById('corrienteValue');
+        const rollValue = document.getElementById('rollValue');
+        const pitchValue = document.getElementById('pitchValue');
+        const lowBatteryWarning = document.getElementById('lowBatteryWarning');
+        const batteryLevel = document.getElementById('batteryLevel');
 
+        // BLE Config
+        var deviceName = 'ESP32';
+        var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
+        var ledCharacteristic = '19b10002-e8f2-537e-4f6c-d104768a1214';
+        var sensorCharacteristic = '19b10001-e8f2-537e-4f6c-d104768a1214';
 
-  <section>
-    <h2>Control de rumbo</h2>
-    <button id="onButton">ON</button>
-    <button id="offButton">OFF</button>
-    <p>Último valor enviado: <span id="valueSent"></span></p>
-  </section>
+        var bleServer, bleServiceFound, sensorCharacteristicFound;
 
-  <script src="script.js"></script>
+        // Map variables
+        let map, bleMarker, pcMarker;
+        let PC_lat = null;
+        let PC_lng = null;
+
+        // Initialize when page loads
+        window.onload = () => {
+            initMap();
+            getUserLocation();
+        };
+
+        // Event Listeners
+        connectButton.addEventListener('click', () => {
+            if (navigator.bluetooth) connectToDevice();
+            else {
+                bleStateContainer.innerHTML = "Bluetooth no disponible";
+                console.log("Bluetooth API no disponible");
+            }
+        });
+
+        disconnectButton.addEventListener('click', disconnectDevice);
+        onButton.addEventListener('click', () => writeOnCharacteristic(1));
+        offButton.addEventListener('click', () => writeOnCharacteristic(0));
+
+        // BLE Functions
+        function connectToDevice() {
+            navigator.bluetooth.requestDevice({
+                filters: [{ name: deviceName }],
+                optionalServices: [bleService]
+            })
+            .then(device => {
+                bleStateContainer.innerHTML = `Conectado a ${device.name}`;
+                bleStateContainer.style.color = "#24af37";
+                bleStatusIndicator.className = "status-indicator connected";
+                device.addEventListener('gattservicedisconnected', onDisconnected);
+                return device.gatt.connect();
+            })
+            .then(server => server.getPrimaryService(bleService))
+            .then(service => {
+                bleServiceFound = service;
+                return service.getCharacteristic(sensorCharacteristic);
+            })
+            .then(characteristic => {
+                sensorCharacteristicFound = characteristic;
+                characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChange);
+                return characteristic.startNotifications();
+            })
+            .catch(err => console.error("Error:", err));
+        }
+
+        function handleCharacteristicChange(event) {
+            const value = event.target.value;
+            const buffer = value.buffer;
+
+            if (value.byteLength !== 34) {
+                retrievedValue.innerHTML = `Formato inválido (${value.byteLength}B)`;
+                return;
+            }
+
+            const dataView = new DataView(buffer);
+            let offset = 0;
+
+            // Parse ACKpld_t
+            const latitud = dataView.getFloat32(offset, true); offset += 4;
+            const longitud = dataView.getFloat32(offset, true); offset += 4;
+            const velocidad = dataView.getFloat32(offset, true); offset += 4;
+            const ACK_estado = dataView.getUint8(offset); offset += 1;
+            const bat_level = dataView.getUint8(offset); offset += 1;
+            const bat_current = dataView.getUint8(offset); offset += 1;
+            const sat_in_view = dataView.getUint8(offset); offset += 1;
+            const heading = dataView.getUint16(offset, true); offset += 2;
+            const roll = dataView.getInt16(offset, true); offset += 2;
+            const pitch = dataView.getInt16(offset, true); offset += 2;
+
+            // Skip extra bytes
+            offset += 10;
+
+            // Parse NRF status
+            const nrf_OK = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
+            const nrf_quality = dataView.getUint8(offset); offset += 1;
+
+            // Process data
+            const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
+            const tension_bat = calcularTensionBateria(bat_level);
+            const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
+
+            // Update UI
+            updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
+            updateBleMarker(latitud, longitud);
+            timestampContainer.innerHTML = getDateTime();
+
+            console.log(`Lat: ${latitud}, Lng: ${longitud}, Heading: ${heading}°, Battery: ${porcentaje_bat}%`);
+        }
+
+        function updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality) {
+            // Distance
+            retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
+            
+            // Battery
+            batteryLevel.textContent = porcentaje_bat + '%';
+            updateBatteryVisual(porcentaje_bat);
+            corrienteValue.textContent = bat_current + ' mA';
+            
+            // Navigation
+            headingValue.textContent = heading + '°';
+            velocidadValue.textContent = velocidad.toFixed(2) + ' m/s';
+            satelitesValue.textContent = sat_in_view;
+            
+            // Update compass
+            compassNeedle.style.transform = `translateX(-50%) rotate(${heading}deg)`;
+            
+            // IMU
+            rollValue.textContent = (roll / 100).toFixed(1) + '°';
+            pitchValue.textContent = (pitch / 100).toFixed(1) + '°';
+            
+            // NRF Status
+            if (nrf_OK === 'Y') {
+                estadoNRF.innerHTML = `NRF OK ✅ (${nrf_quality} reintentos)`;
+                estadoNRF.style.color = "#24af37";
+                nrfStatusIndicator.className = "status-indicator connected";
+            } else if (nrf_OK === 'N') {
+                estadoNRF.innerHTML = `Error NRF ❌`;
+                estadoNRF.style.color = "#d13a30";
+                nrfStatusIndicator.className = "status-indicator disconnected";
+            }
+            
+            // Battery warning
+            if (porcentaje_bat <= 20) {
+                batteryLevel.className = "battery-percentage critical";
+                lowBatteryWarning.className = "low-battery-warning";
+            } else {
+                batteryLevel.className = "battery-percentage";
+                lowBatteryWarning.className = "low-battery-warning hidden";
+            }
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            if (!lat2 || !lon2) return 0;
+            const R = 6371000;
+            const rad = Math.PI / 180;
+            const dLat = (lat2 - lat1) * rad;
+            const dLon = (lon2 - lon1) * rad;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return Math.round(R * c);
+        }
+
+        function calcularTensionBateria(bat_level) {
+            return ((bat_level * 2 + 3584) / 4095) * 3.3 * 3.7;
+        }
+
+        function estimarPorcentajeBateria(tension) {
+            if (tension >= 12.2) return 100;
+            if (tension >= 12.1) return 90;
+            if (tension >= 12) return 80;
+            if (tension >= 11.7) return 70;
+            if (tension >= 11.55) return 60;
+            if (tension >= 11.4) return 50;
+            if (tension >= 11.25) return 40;
+            if (tension >= 11.1) return 30;
+            return 20;
+        }
+
+        function writeOnCharacteristic(value) {
+            if (bleServiceFound) {
+                bleServiceFound.getCharacteristic(ledCharacteristic)
+                    .then(characteristic => characteristic.writeValue(new Uint8Array([value])))
+                    .then(() => {
+                        latestValueSent.innerHTML = value;
+                        console.log("Valor enviado:", value);
+                    })
+                    .catch(err => console.error("Error al escribir:", err));
+            } else {
+                alert("No hay conexión BLE");
+            }
+        }
+
+        function disconnectDevice() {
+            if (sensorCharacteristicFound) {
+                sensorCharacteristicFound.stopNotifications().then(() => {
+                    bleServer.disconnect();
+                    bleStateContainer.innerHTML = "Desconectado";
+                    bleStateContainer.style.color = "#d13a30";
+                    bleStatusIndicator.className = "status-indicator disconnected";
+                    nrfStatusIndicator.className = "status-indicator disconnected";
+                });
+            }
+        }
+
+        function onDisconnected(event) {
+            bleStateContainer.innerHTML = "Desconectado";
+            bleStateContainer.style.color = "#d13a30";
+            bleStatusIndicator.className = "status-indicator disconnected";
+            nrfStatusIndicator.className = "status-indicator disconnected";
+            console.log("BLE desconectado");
+        }
+
+        // Map Functions
+        function initMap() {
+            map = L.map('map').setView([-34.9215, -57.9545], 14);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Initialize markers
+            bleMarker = L.marker([0, 0], { icon: usvIcon() })
+                .addTo(map)
+                .bindPopup("USV")
+                .openPopup();
+
+            pcMarker = L.marker([0, 0], { icon: userIcon() })
+                .addTo(map)
+                .bindPopup("Home")
+                .openPopup();
+        }
+
+        function updateBleMarker(lat, lng) {
+            if (lat && lng && lat !== 0 && lng !== 0) {
+                bleMarker.setLatLng([lat, lng]);
+                bleMarker.setPopupContent(`USV: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+                // Optional: auto-center map on USV
+                // map.setView([lat, lng], 15);
+            }
+        }
+
+        function getUserLocation() {
+            if (!navigator.geolocation) {
+                console.log("Geolocalización no soportada");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(pos => {
+                PC_lat = pos.coords.latitude;
+                PC_lng = pos.coords.longitude;
+                pcMarker.setLatLng([PC_lat, PC_lng]);
+                pcMarker.setPopupContent(`Home: ${PC_lat.toFixed(5)}, ${PC_lng.toFixed(5)}`);
+                
+                // Center map between user and USV if both exist
+                if (PC_lat && PC_lng) {
+                    map.setView([PC_lat, PC_lng], 15);
+                }
+            }, err => {
+                console.warn("Error al obtener ubicación:", err.message);
+            });
+        }
+
+        function getDateTime() {
+            const now = new Date();
+            return now.toLocaleString();
+        }
+
+        // Custom map icons
+        function usvIcon() {
+            return L.divIcon({
+                className: 'usv-marker-icon',
+                html: `<div style="
+                    width: 24px; 
+                    height: 24px; 
+                    background: var(--warning-yellow);
+                    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+                    border: 2px solid var(--primary-orange);
+                "></div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
+
+        function userIcon() {
+            return L.divIcon({
+                className: 'user-marker-icon',
+                html: `<div style="
+                    width: 16px; 
+                    height: 16px; 
+                    background: var(--success-green);
+                    border-radius: 50%; 
+                    border: 3px solid white; 
+                    box-shadow: 0 0 10px rgba(179,233,145,0.5);
+                "></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+        }
+
+        function updateBatteryVisual(level) {
+            const percent = Math.max(0, Math.min(100, parseInt(level)));
+            batteryFillOverlay.style.height = percent + '%';
+
+            if (percent > 50) {
+                batteryFillOverlay.style.backgroundColor = 'var(--success-green)';
+            } else if (percent > 20) {
+                batteryFillOverlay.style.backgroundColor = 'var(--warning-yellow)';
+            } else {
+                batteryFillOverlay.style.backgroundColor = 'var(--danger-red)';
+            }
+        }
+    </script>
 </body>
 </html>
