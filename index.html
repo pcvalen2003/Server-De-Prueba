@@ -34,7 +34,7 @@
         }
         
         .main-container {
-            max-width: 100%;
+            max-width: 1400px;
             margin: 0 auto;
             display: grid;
             gap: 15px;
@@ -42,9 +42,8 @@
                 "header"
                 "status"
                 "map"
-                "telemetry"
-                "controls";
-            grid-template-rows: auto auto 1fr auto auto;
+                "telemetry";
+            grid-template-rows: auto auto 1fr auto;
             height: calc(100vh - 20px);
         }
 
@@ -54,25 +53,21 @@
                 grid-template-areas: 
                     "header header"
                     "status status"
-                    "map telemetry"
-                    "controls controls";
+                    "map telemetry";
                 grid-template-columns: 2fr 1fr;
-                grid-template-rows: auto auto 1fr auto;
+                grid-template-rows: auto auto 1fr;
             }
         }
 
         /* Tablet and desktop */
         @media (min-width: 768px) {
-            body { padding: 10px; }
             .main-container {
-                max-width: 1400px;
                 grid-template-areas: 
                     "header header"
                     "status status"
-                    "map sidebar"
                     "map sidebar";
                 grid-template-columns: 70% 30%;
-                grid-template-rows: auto auto 1fr 1fr;
+                grid-template-rows: auto auto 1fr;
             }
             
             .sidebar {
@@ -209,12 +204,6 @@
             gap: 15px;
         }
         
-        @media (max-width: 767px) {
-            .telemetry-panel {
-                grid-area: telemetry;
-            }
-        }
-        
         .telemetry-section {
             background: var(--white);
             border-radius: 12px;
@@ -291,6 +280,42 @@
             height: 8px;
             background: var(--dark-gray);
             border-radius: 50%;
+        }
+
+        /* Control Sliders */
+        .control-sliders {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .slider-container {
+            text-align: center;
+        }
+
+        .slider-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-orange);
+            margin-bottom: 10px;
+        }
+
+        .slider-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--dark-gray);
+            margin-bottom: 10px;
+        }
+
+        .vertical-slider {
+            writing-mode: bt-lr;
+            -webkit-appearance: slider-vertical;
+            width: 30px;
+            height: 150px;
+            background: linear-gradient(to top, var(--danger-red), var(--warning-yellow), var(--success-green));
+            border-radius: 15px;
+            outline: none;
         }
 
         /* Battery Display */
@@ -478,6 +503,15 @@
             .battery-container {
                 justify-content: center;
             }
+
+            .control-sliders {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .vertical-slider {
+                height: 120px;
+            }
         }
 
         @keyframes pulse {
@@ -552,6 +586,25 @@
                 </div>
             </div>
 
+            <!-- Control Sliders -->
+            <div class="telemetry-section">
+                <div class="section-title">🎮 Control Actual</div>
+                <div class="control-sliders">
+                    <div class="slider-container">
+                        <div class="slider-label">Throttle</div>
+                        <div class="slider-value" id="throttleValue">--%</div>
+                        <input type="range" class="vertical-slider" id="throttleSlider" 
+                               min="0" max="100" value="0" disabled>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">Dirección</div>
+                        <div class="slider-value" id="directionValue">--%</div>
+                        <input type="range" class="vertical-slider" id="directionSlider" 
+                               min="0" max="100" value="50" disabled>
+                    </div>
+                </div>
+            </div>
+
             <!-- Battery Section -->
             <div class="telemetry-section battery-section">
                 <div class="section-title">🔋 Estado de Batería</div>
@@ -585,8 +638,8 @@
             </div>
 
             <!-- Controls Section -->
-            <div class="panel controls-section">
-                <div class="panel-title">🎮 Control de Rumbo</div>
+            <div class="telemetry-section">
+                <div class="section-title">🎮 Control de Rumbo</div>
                 
                 <div class="connection-controls">
                     <button class="control-btn btn-connect" id="connectBleButton">Conectar Estación</button>
@@ -625,6 +678,12 @@
         const pitchValue = document.getElementById('pitchValue');
         const lowBatteryWarning = document.getElementById('lowBatteryWarning');
         const batteryLevel = document.getElementById('batteryLevel');
+
+        // Control sliders elements
+        const throttleValue = document.getElementById('throttleValue');
+        const directionValue = document.getElementById('directionValue');
+        const throttleSlider = document.getElementById('throttleSlider');
+        const directionSlider = document.getElementById('directionSlider');
 
         // BLE Config
         var deviceName = 'ESP32';
@@ -688,7 +747,7 @@
             const value = event.target.value;
             const buffer = value.buffer;
 
-            if (value.byteLength !== 34) {
+            if (value.byteLength !== 36) {  // Updated to 36 bytes (34 + 2 for throttle and direction)
                 retrievedValue.innerHTML = `Formato inválido (${value.byteLength}B)`;
                 return;
             }
@@ -715,20 +774,24 @@
             const nrf_OK = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
             const nrf_quality = dataView.getUint8(offset); offset += 1;
 
+            // Parse new control data
+            const throttle_control = dataView.getUint8(offset); offset += 1;
+            const direction_control = dataView.getUint8(offset); offset += 1;
+
             // Process data
             const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
             const tension_bat = calcularTensionBateria(bat_level);
             const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
 
             // Update UI
-            updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
+            updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality, throttle_control, direction_control);
             updateBleMarker(latitud, longitud);
             timestampContainer.innerHTML = getDateTime();
 
-            console.log(`Lat: ${latitud}, Lng: ${longitud}, Heading: ${heading}°, Battery: ${porcentaje_bat}%`);
+            console.log(`Lat: ${latitud}, Lng: ${longitud}, Heading: ${heading}°, Battery: ${porcentaje_bat}%, Throttle: ${throttle_control}, Direction: ${direction_control}`);
         }
 
-        function updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality) {
+        function updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality, throttle_control, direction_control) {
             // Check if USV is disconnected (15 retries = max retries reached)
             const usvDisconnected = (nrf_quality === 15);
             
@@ -742,6 +805,12 @@
                 satelitesValue.textContent = '--';
                 rollValue.textContent = '--°';
                 pitchValue.textContent = '--°';
+                throttleValue.textContent = '--%';
+                directionValue.textContent = '--%';
+                
+                // Reset sliders
+                throttleSlider.value = 0;
+                directionSlider.value = 50;
                 
                 // Reset compass to 0
                 compassNeedle.style.transform = `translateX(-50%) rotate(0deg)`;
@@ -769,6 +838,12 @@
                 headingValue.textContent = heading + '°';
                 velocidadValue.textContent = velocidad.toFixed(2) + ' m/s';
                 satelitesValue.textContent = sat_in_view;
+                
+                // Control values
+                throttleValue.textContent = throttle_control + '%';
+                directionValue.textContent = direction_control + '%';
+                throttleSlider.value = throttle_control;
+                directionSlider.value = direction_control;
                 
                 // Update compass
                 compassNeedle.style.transform = `translateX(-50%) rotate(${heading}deg)`;
