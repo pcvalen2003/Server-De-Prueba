@@ -4,10 +4,25 @@ const disconnectButton = document.getElementById('disconnectBleButton');
 const onButton = document.getElementById('onButton');
 const offButton = document.getElementById('offButton');
 const retrievedValue = document.getElementById('valueContainer');
-const latestValueSent = document.getElementById('valueSent');
 const bleStateContainer = document.getElementById('bleState');
 const timestampContainer = document.getElementById('timestamp');
 const batteryFillOverlay = document.getElementById('batteryFillOverlay');
+const estadoNRF = document.getElementById('estadoNRF');
+const bleStatusIndicator = document.getElementById('bleStatusIndicator');
+const nrfStatusIndicator = document.getElementById('nrfStatusIndicator');
+const headingValue = document.getElementById('headingValue');
+const velocidadValue = document.getElementById('velocidadValue');
+const satelitesValue = document.getElementById('satelitesValue');
+const compassNeedle = document.getElementById('compassNeedle');
+const corrienteValue = document.getElementById('corrienteValue');
+const rollValue = document.getElementById('rollValue');
+const pitchValue = document.getElementById('pitchValue');
+const lowBatteryWarning = document.getElementById('lowBatteryWarning');
+const batteryLevel = document.getElementById('batteryLevel');
+const throttleValue = document.getElementById('throttleValue');
+const directionValue = document.getElementById('directionValue');
+const throttleSlider = document.getElementById('throttleSlider');
+const directionSlider = document.getElementById('directionSlider');
 
 // BLE Config
 var deviceName = 'ESP32';
@@ -17,292 +32,194 @@ var sensorCharacteristic = '19b10001-e8f2-537e-4f6c-d104768a1214';
 
 var bleServer, bleServiceFound, sensorCharacteristicFound;
 
-// Mapa
+// Map variables
 let map, bleMarker, pcMarker;
-
 let PC_lat = null;
 let PC_lng = null;
 
-
-// Al cargar la página
+// Initialize when page loads
 window.onload = () => {
-  initMap();
-  getUserLocation();
+    initMap();
+    getUserLocation();
 };
 
-// BLE
+// Event Listeners
 connectButton.addEventListener('click', () => {
-  if (navigator.bluetooth) connectToDevice();
-  else {
-    bleStateContainer.innerHTML = "Bluetooth no disponible";
-    console.log("Bluetooth API no disponible");
-  }
+    if (navigator.bluetooth) connectToDevice();
+    else {
+        bleStateContainer.innerHTML = "Bluetooth no disponible";
+        console.log("Bluetooth API no disponible");
+    }
 });
 
 disconnectButton.addEventListener('click', disconnectDevice);
 onButton.addEventListener('click', () => writeOnCharacteristic(1));
 offButton.addEventListener('click', () => writeOnCharacteristic(0));
 
-// BLE Logic
 function connectToDevice() {
-  navigator.bluetooth.requestDevice({
-    filters: [{ name: deviceName }],
-    optionalServices: [bleService]
-  })
-  .then(device => {
-    bleStateContainer.innerHTML = `Conectado a ${device.name}`;
-    bleStateContainer.style.color = "#24af37";
-    device.addEventListener('gattservicedisconnected', onDisconnected);
-    return device.gatt.connect();
-  })
-  .then(server => server.getPrimaryService(bleService))
-  .then(service => {
-    bleServiceFound = service;
-    return service.getCharacteristic(sensorCharacteristic);
-  })
-  .then(characteristic => {
-    sensorCharacteristicFound = characteristic;
-    characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChange);
-    return characteristic.startNotifications();
-  })
-  .catch(err => console.error("Error:", err));
+    navigator.bluetooth.requestDevice({
+        filters: [{ name: deviceName }],
+        optionalServices: [bleService]
+    })
+    .then(device => {
+        bleStateContainer.innerHTML = "Conectando...";
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+        return device.gatt.connect();
+    })
+    .then(server => {
+        bleServer = server;
+        return server.getPrimaryService(bleService);
+    })
+    .then(service => {
+        bleServiceFound = service;
+        return service.getCharacteristic(sensorCharacteristic);
+    })
+    .then(characteristic => {
+        sensorCharacteristicFound = characteristic;
+        return characteristic.startNotifications();
+    })
+    .then(() => {
+        sensorCharacteristicFound.addEventListener('characteristicvaluechanged', handleCharacteristicChange);
+        bleStateContainer.innerHTML = "Conectado";
+        bleStatusIndicator.classList.add('activo');
+    })
+    .catch(error => {
+        bleStateContainer.innerHTML = "Error al conectar";
+        console.error(error);
+    });
 }
 
-
-// Recibir la struct por BLE compuesta por
-// - 32B ACKpld
-// - 1B nrf_ok 'Y' o 'N'
-// - 1B nrf_quality
 function handleCharacteristicChange(event) {
-  const value = event.target.value;
-  const buffer = value.buffer;
+    const value = event.target.value;
+    const data = new Uint8Array(value.buffer);
 
-  if (value.byteLength !== 34) {
-    retrievedValue.innerHTML = `Formato inválido (tamaño incorrecto de ${value.byteLength}B)`;
-    return;
-  }
+    const distancia = data[0];
+    const porcentaje_bat = data[1];
+    const bat_current = data[2];
+    const heading = data[3];
+    const velocidad = data[4];
+    const sat_in_view = data[5];
+    const roll = data[6];
+    const pitch = data[7];
+    const nrf_OK = data[8];
+    const nrf_quality = data[9];
+    const throttle = data[10];
+    const direction = data[11];
 
-  const dataView = new DataView(buffer);
-  let offset = 0;
-
-  // === ACKpld_t ===
-  const latitud     = dataView.getFloat32(offset, true); offset += 4;
-  const longitud    = dataView.getFloat32(offset, true); offset += 4;
-  const velocidad   = dataView.getFloat32(offset, true); offset += 4;
-
-  const ACK_estado  = dataView.getUint8(offset); offset += 1;
-  const bat_level   = dataView.getUint8(offset); offset += 1;
-  const bat_current = dataView.getUint8(offset); offset += 1;
-  const sat_in_view = dataView.getUint8(offset); offset += 1;
-
-  const heading     = dataView.getUint16(offset, true); offset += 2;
-
-  // Extra: 14 bytes binarios
-  const roll  = dataView.getInt16(offset, true); offset += 2;
-  const pitch = dataView.getInt16(offset, true); offset += 2;
-  const extra_bytes = [];
-  for (let i = 0; i < 10; i++) {
-    extra_bytes.push(dataView.getUint8(offset++));
-  }
-
-  // === Campo extra del ble_mensaje_t ===
-  const nrf_OK       = String.fromCharCode(dataView.getUint8(offset)); offset += 1;
-  const nrf_quality  = dataView.getUint8(offset); offset += 1;
-
-  // === Procesamiento ===
-  const distancia = calcularDistancia(latitud, longitud, PC_lat, PC_lng);
-  const tension_bat = calcularTensionBateria(bat_level);
-  const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
-  document.getElementById("batteryLevel").textContent = porcentaje_bat;
-  updateBatteryVisual(porcentaje_bat);
-
-// Mostrar alerta si es 20%
-  if (porcentaje_bat === 20) {
-    document.getElementById("lowBatteryWarning").textContent = "⚠️ Batería baja: 20%";
-  } else {
-    document.getElementById("lowBatteryWarning").textContent = "";
-  }
-  if (nrf_OK === 'Y') {
-    estadoNRF.innerHTML = `NRF OK ✅ (${nrf_quality} reintentos)`;
-    estadoNRF.style.color = "#24af37";
-  } else if (nrf_OK === 'N') {
-    estadoNRF.innerHTML = `Error NRF ❌`;
-    estadoNRF.style.color = "#d13a30";
-  } else {
-    estadoNRF.innerHTML = `Estado NRF desconocido`;
-    estadoNRF.style.color = "#bebebe";
-  }
-  
- 
-
-  retrievedValue.innerHTML = `${distancia.toFixed(1)} m`;
-  timestampContainer.innerHTML = getDateTime();
-  updateBleMarker(latitud, longitud);
-  document.getElementById("batteryLevel").textContent = porcentaje_bat;
-
-  // === Debug en consola ===
-  console.log(`Lat: ${latitud}, Lng: ${longitud}`);
-  console.log(`Distancia: ${distancia.toFixed(1)} m`);
-  console.log(`Velocidad: ${velocidad.toFixed(2)} m/s`);
-  console.log(`Batería: ${porcentaje_bat}%`);
-  console.log(`Corriente: ${bat_current} mA`);
-  console.log(`Heading: ${heading}°`);
-  console.log(`Satélites: ${sat_in_view}`);
-  console.log(`Roll: ${roll}, Pitch: ${pitch}`);
-  console.log(`Extra (resto):`, extra_bytes);
-  console.log(`NRF estado: ${nrf_OK}, calidad: ${nrf_quality}`);
+    updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality, throttle, direction);
 }
 
-
+function updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality, throttle_control, direction_control) {
+    timestampContainer.innerText = getDateTime();
+    batteryLevel.innerText = `${porcentaje_bat}%`;
+    headingValue.innerText = `${heading}°`;
+    velocidadValue.innerText = `${velocidad} km/h`;
+    satelitesValue.innerText = `${sat_in_view}`;
+    corrienteValue.innerText = `${bat_current} mA`;
+    rollValue.innerText = `${roll}°`;
+    pitchValue.innerText = `${pitch}°`;
+    throttleValue.innerText = throttle_control;
+    directionValue.innerText = direction_control;
+    compassNeedle.style.transform = `rotate(${heading}deg)`;
+    bleStatusIndicator.classList.toggle('activo', true);
+    nrfStatusIndicator.classList.toggle('activo', nrf_OK);
+    updateBatteryVisual(porcentaje_bat);
+}
 
 function calcularDistancia(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // radio de la Tierra en metros
-    const rad = Math.PI / 180;
-    const dLat = (lat2 - lat1) * rad;
-    const dLon = (lon2 - lon1) * rad;
-
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(R * c); // distancia en metros (entero)
+    function toRad(x) { return x * Math.PI / 180; }
+    var R = 6371;
+    var dLat = toRad(lat2 - lat1);
+    var dLon = toRad(lon2 - lon1);
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c * 1000;
 }
 
 function calcularTensionBateria(bat_level) {
-  const tension = ((bat_level * 2 + 3584) / 4095) * 3.3 * 3.7;
-  return tension;
+    return 6 + (bat_level / 100) * 2.4;
 }
 
 function estimarPorcentajeBateria(tension) {
-  let porcentaje;
-
-  if (tension >= 12.2) {
-    porcentaje = 100;
-  } else if (tension >= 12.1) {
-    porcentaje = 90;
-  } else if (tension >= 12) {
-    porcentaje = 80;
-  } else if (tension >= 11.7) {
-    porcentaje = 70;
-  } else if (tension >= 11.55) {
-    porcentaje = 60;
-  } else if (tension >= 11.4) {
-    porcentaje = 50;
-  } else if (tension >= 11.25) {
-    porcentaje = 40;
-  } else if (tension >= 11.1) {
-    porcentaje = 30;
-  } else {
-    porcentaje = 20;
-  } 
-
-  return porcentaje;
+    return Math.round((tension - 6) / 2.4 * 100);
 }
 
 function writeOnCharacteristic(value) {
-  if (bleServiceFound) {
+    if (!bleServiceFound) return;
     bleServiceFound.getCharacteristic(ledCharacteristic)
-      .then(characteristic => characteristic.writeValue(new Uint8Array([value])))
-      .then(() => {
-        latestValueSent.innerHTML = value;
-        console.log("Valor enviado:", value);
-      })
-      .catch(err => console.error("Error al escribir:", err));
-  } else {
-    alert("No hay conexión BLE");
-  }
+        .then(characteristic => characteristic.writeValue(Uint8Array.of(value)))
+        .catch(err => console.error("Error escribiendo en characteristic", err));
 }
 
 function disconnectDevice() {
-  if (sensorCharacteristicFound) {
-    sensorCharacteristicFound.stopNotifications().then(() => {
-      bleServer.disconnect();
-      bleStateContainer.innerHTML = "Desconectado";
-      bleStateContainer.style.color = "#d13a30";
-    });
-  }
+    if (bleServer?.connected) {
+        bleServer.disconnect();
+        bleStateContainer.innerHTML = "Desconectado";
+        bleStatusIndicator.classList.remove('activo');
+    }
 }
 
 function onDisconnected(event) {
-  bleStateContainer.innerHTML = "Desconectado";
-  bleStateContainer.style.color = "#d13a30";
-  console.log("BLE desconectado");
+    bleStateContainer.innerHTML = "Desconectado";
+    bleStatusIndicator.classList.remove('activo');
+    console.log("BLE device disconnected");
 }
 
-// Mapa y geolocalización
 function initMap() {
-  map = L.map('map').setView([0, 0], 2);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  bleMarker = L.marker([0, 0], { icon: redIcon() })
-    .addTo(map)
-    .bindPopup("USV")
-    .openPopup();
-
-  pcMarker = L.marker([0, 0], { icon: blueIcon() })
-    .addTo(map)
-    .bindPopup("Home")
-    .openPopup();;
+    map = L.map('map').setView([-34.6, -58.4], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+    }).addTo(map);
 }
 
 function updateBleMarker(lat, lng) {
-  bleMarker.setLatLng([lat, lng]);
-  bleMarker.setPopupContent(`USV: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-//  map.setView([lat, lng], 15);
+    if (!bleMarker) {
+        bleMarker = L.marker([lat, lng], { icon: usvIcon() }).addTo(map);
+    } else {
+        bleMarker.setLatLng([lat, lng]);
+    }
+    map.panTo([lat, lng]);
 }
 
 function getUserLocation() {
-  if (!navigator.geolocation) {
-    console.log("Geolocalización no soportada");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(pos => {
-    PC_lat = pos.coords.latitude;
-    PC_lng = pos.coords.longitude;
-    pcMarker.setLatLng([PC_lat, PC_lng]);
-    pcMarker.setPopupContent(`Home: ${PC_lat.toFixed(5)}, ${PC_lng.toFixed(5)}`);
-  }, err => {
-    console.warn("Error al obtener ubicación:", err.message);
-  });
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(pos => {
+            PC_lat = pos.coords.latitude;
+            PC_lng = pos.coords.longitude;
+            if (!pcMarker) {
+                pcMarker = L.marker([PC_lat, PC_lng], { icon: userIcon() }).addTo(map);
+            } else {
+                pcMarker.setLatLng([PC_lat, PC_lng]);
+            }
+        });
+    }
 }
 
 function getDateTime() {
-  const now = new Date();
-  return now.toLocaleString();
+    return new Date().toLocaleString();
 }
 
-// Iconos personalizados (opcional)
-function redIcon() {
-  return new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-  });
+function usvIcon() {
+    return L.icon({
+        iconUrl: 'usv_icon.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+    });
 }
 
-function blueIcon() {
-  return new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-  });
+function userIcon() {
+    return L.icon({
+        iconUrl: 'user_icon.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+    });
 }
-
 
 function updateBatteryVisual(level) {
-  const percent = Math.max(0, Math.min(100, parseInt(level)));
-  batteryFillOverlay.style.height = percent + '%';
-
-  if (percent > 50) {
-    batteryFillOverlay.style.backgroundColor = 'green';
-  } else if (percent > 20) {
-    batteryFillOverlay.style.backgroundColor = 'orange';
-  } else {
-    batteryFillOverlay.style.backgroundColor = 'red';
-  }
+    batteryFillOverlay.style.width = `${level}%`;
+    if (level < 20) {
+        lowBatteryWarning.style.display = 'block';
+    } else {
+        lowBatteryWarning.style.display = 'none';
+    }
 }
