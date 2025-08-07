@@ -481,6 +481,8 @@
         #directionArrow {
             font-size: 40px;
             color: #0c4a6e;
+            display: inline-block;
+            transform-origin: center center;
             transition: transform 0.3s ease;
         }
 
@@ -989,9 +991,14 @@
 
         function updateBatteryVisual(level) {
             const percent = Math.max(0, Math.min(100, parseInt(level)));
-            batteryFillOverlay.style.height = percent + '%';
+            if(percent == 0)
+                batteryFillOverlay.style.height = '--';
+            else
+                batteryFillOverlay.style.height = percent + '%';
 
-            if (percent > 50) {
+            if(percent == 0){
+                batteryFillOverlay.style.backgroundColor = 'var(--light-bg)';
+            } else if (percent > 50) {
                 batteryFillOverlay.style.backgroundColor = 'var(--success-green)';
             } else if (percent > 20) {
                 batteryFillOverlay.style.backgroundColor = 'var(--warning-yellow)';
@@ -1004,7 +1011,7 @@
         function updateThrottle(throttle) {
           const lever = document.getElementById('leverHandle');
           const percentage = throttle / 255;
-          const maxHeight = 160; // igual al height de throttle-lever
+          const maxHeight = 100; // igual al height de throttle-lever
           const handleHeight = 30;
           const bottom = 5 + percentage * (maxHeight - handleHeight - 10); // 10px de margen
           lever.style.bottom = `${bottom}px`;
