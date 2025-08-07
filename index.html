@@ -164,6 +164,7 @@
             grid-area: map;
             position: relative;
             min-height: 300px;
+            overflow: hidden;
         }
         
         #map {
@@ -563,7 +564,7 @@
             <div class="panel-title">📍 Mapa y Posición</div>
             <div class="map-overlay">
                 <div class="distance-display">
-                    Distancia: <span id="valueContainer">NaN</span>
+                    Distancia: <span id="valueContainer">--</span>
                 </div>
                 <div style="font-size: 11px; color: #666; margin-top: 4px;">
                     Última lectura: <span id="timestamp"></span>
@@ -787,8 +788,12 @@
             const porcentaje_bat = estimarPorcentajeBateria(tension_bat);
 
             // Update UI
-            updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
-            updateBleMarker(latitud, longitud);
+            if(nrf_quality !== 0){
+                updateUI(distancia, porcentaje_bat, bat_current, heading, velocidad, sat_in_view, roll, pitch, nrf_OK, nrf_quality);
+                updateBleMarker(latitud, longitud);
+            } else {
+                noUSV_UI();
+            }
             timestampContainer.innerHTML = getDateTime();
             updateThrottle(throttle);
             updateDireccion(direccion);
@@ -837,6 +842,43 @@
                 lowBatteryWarning.className = "low-battery-warning hidden";
             }
         }
+
+        function noUSV_UI() {
+            // Distance
+            retrievedValue.innerHTML = `-- m`;
+            
+            // Battery
+            batteryLevel.textContent = '--%';
+            corrienteValue.textContent = '--mA';
+            
+            // Navigation
+            headingValue.textContent = '--°';
+            velocidadValue.textContent = '--m/s';
+            satelitesValue.textContent = '--';
+            
+            // Update compass
+            compassNeedle.style.transform = `translateX(-50%) rotate(0deg)`;
+            
+            // IMU
+            rollValue.textContent = '--°';
+            pitchValue.textContent = '--°';
+            
+            // NRF Status
+            if (nrf_OK === 'Y') {
+                estadoNRF.innerHTML = `NRF OK ⚠️ USV sin conexión`;
+                estadoNRF.style.color = "#ffbd59";
+                nrfStatusIndicator.className = "status-indicator disconnected";
+            } else if (nrf_OK === 'N') {
+                estadoNRF.innerHTML = `Error NRF ❌`;
+                estadoNRF.style.color = "#d13a30";
+                nrfStatusIndicator.className = "status-indicator disconnected";
+            }
+            
+            // Battery warning
+            batteryLevel.className = "battery-percentage";
+            lowBatteryWarning.className = "low-battery-warning hidden";
+        }
+
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             if (!lat2 || !lon2) return 0;
